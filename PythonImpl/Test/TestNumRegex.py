@@ -4,7 +4,7 @@ import re
 class TestNumRegex(unittest.TestCase):
     
     def setUp(self):
-        self.regex = re.compile(r'0|-?[1-9][\d]*(?:\.?\d+)?(?:[eE][-+]?[\d]+)?')
+        self.regex = re.compile(r'-?0(?:\.\d+)?(?:[eE][-+]?[\d]+)?|-?[1-9][\d]*(?:\.?\d+)?(?:[eE][-+]?[\d]+)?')
 
     def test_simple(self):
         test_str = '1234 5678'
@@ -21,11 +21,6 @@ class TestNumRegex(unittest.TestCase):
         test_str = '-25'
         result = self.regex.findall(test_str)
         self.assertEqual('-25', result[0])
-
-    def test_negative_zero(self):
-        test_str = '-0'
-        result = self.regex.findall(test_str)
-        self.assertEqual('0', result[0])
 
     def test_decimal(self):
         test_str = '3.14159'
@@ -81,6 +76,11 @@ class TestNumRegex(unittest.TestCase):
         test_str = '9006'
         result = self.regex.findall(test_str)
         self.assertEqual('9006', result[0])
+
+    def test_zeros3(self):
+        test_str = '0.01'
+        result = self.regex.findall(test_str)
+        self.assertEqual('0.01', result[0])
 
 if __name__ == '__main__':
     unittest.main()

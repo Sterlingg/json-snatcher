@@ -83,6 +83,7 @@ class Printer(object):
         print self.curr_indent + '['
         self.indent()
         for val in node.members:
+            print self.curr_indent,
             self.value(val)
 
         print self.curr_indent + ']'
@@ -114,12 +115,12 @@ class Printer(object):
     def number(self, node):
         """
         """
-        print node.number
+        print node.number + ','
 
     def string(self, node):
         """
         """
-        print node.string
+        print node.string + ','
 
     def value(self, node):
         """
@@ -247,7 +248,9 @@ class Parser(object):
         key = token
 
         if key[0] != '"':
-            raise ParseError('Expected string in member. Got ' + key + self.tokens[self.curr_token-1])
+#            raise ParseError('Expected string in member. Got ' + key + self.tokens[self.curr_token])
+            for i in range(self.curr_token - 20, self.curr_token):
+                print self.tokens[i]
 
         if self.consume_token() != ':':
             raise ParseError('Expected : in member. Got ' + key)
@@ -304,7 +307,7 @@ class Parser(object):
         return result
                 
 if __name__ == '__main__':
-    with open('Test/rfc_object.json','rb') as f:
+    with open('Test/aws.json','rb') as f:
         test_str = f.read()
         parser = Parser(test_str)
 #        print parser.parse()
