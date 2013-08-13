@@ -21,7 +21,7 @@ class Tokenizer():
         """
         tokens = []
 
-        number_regex = r'-?0(?:\.\d+)?(?:[eE][-+]?[\d]+)?|-?[1-9][\d]*(?:\.?\d+)?(?:[eE][-+]?[\d]+)?'
+        number_regex = r'-?(?:0|(?:[1-9][\d]*))(?:\.\d+)?(?:[eE][-+]?[\d]+)?'
         string_regex = r'"(?:(?:[^"\\\s])*(?:\s)*|(?:(?:\\\\)*\\(?:(?:[\S]|(?:u[0-9A-Fa-f]{4})))))+"'
         delimeters = '[[\]{}:,]'
         json_regex = re.compile('(' + number_regex + ')' 

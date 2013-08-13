@@ -1,11 +1,3 @@
-import unittest
-import re
-
-class TestNumRegex(unittest.TestCase):
-    
-    def setUp(self):
-        self.regex = re.compile(r'-?(?:0|(?:[1-9][\d]*))(?:\.\d+)?(?:[eE][-+]?[\d]+)?')
-
     def test_simple(self):
         test_str = '1234 5678'
         result = self.regex.findall(test_str)
@@ -81,6 +73,3 @@ class TestNumRegex(unittest.TestCase):
         test_str = '0.01'
         result = self.regex.findall(test_str)
         self.assertEqual('0.01', result[0])
-
-if __name__ == '__main__':
-    unittest.main()

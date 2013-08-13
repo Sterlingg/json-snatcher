@@ -248,9 +248,7 @@ class Parser(object):
         key = token
 
         if key[0] != '"':
-#            raise ParseError('Expected string in member. Got ' + key + self.tokens[self.curr_token])
-            for i in range(self.curr_token - 20, self.curr_token):
-                print self.tokens[i]
+            raise ParseError('Expected string in member. Got ' + key + self.tokens[self.curr_token])
 
         if self.consume_token() != ':':
             raise ParseError('Expected : in member. Got ' + key)
