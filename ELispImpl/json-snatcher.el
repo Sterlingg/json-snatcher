@@ -75,7 +75,9 @@ array."
 (defun jsons-number (token path)
   "Returns a json-number given by the current token. A json-number is defined as per the num_regex
 in the jsons-get-tokens function."
-  (list "json-number" token path))
+  (progn
+    (setq jsons-regions (append jsons-regions (list (list (match-beginning 0) (match-end 0) path))))
+    (list "json-number" token path)))
 
 (defun jsons-object (path)
   "Function called when a { is encountered."
@@ -96,7 +98,14 @@ in the jsons-get-tokens function."
 
 (defun jsons-string (token path)
   "Returns a json-string given by the current token."
-  (list "json-string" token path))
+(let ((match_start (match-beginning 0))
+      (match_end (match-end 0))
+      )
+  (progn
+    (setq jsons-regions (append jsons-regions (list (list match_start match_end path))))
+  (list "json-string" token path (list match_start match_end))
+  )
+  ))
 
 ;;TODO: Refactor the if array-index statement.
 (defun jsons-value (token path array-index)
@@ -105,11 +114,7 @@ variable is nil if not coming from an array, or the index of the value in the ar
 it is contained in."
   (if array-index
       (if (jsons-is-number token)
-	  (let (
-		(json-num (jsons-number token (cons array-index path))))
-	    (setq jsons-regions (append jsons-regions (list (list (match-beginning 0) (match-end 0) json-num))))
-	    (list "json-value" json-num (list (match-beginning 0) (match-end 0)))	      
-	    )
+	  (list "json-value" (jsons-number token (cons array-index path)) (list (match-beginning 0) (match-end 0)))	      
 	(cond
 	 ((string= token "{") (jsons-object (cons array-index path)))
 	 ((string= token "[") (jsons-array (cons array-index path)))
@@ -119,29 +124,19 @@ it is contained in."
 	)
 
     (if (jsons-is-number token)
-	(list "json-value" (jsons-number token path))
+	(list "json-value" (jsons-number token path) (list (match-beginning 0) (match-end 0)))
       (cond
        ((string= token "{") (jsons-object path))
        ((string= token "[") (jsons-array path))
        ((string= (substring token 0 1) "\"") (jsons-string token path))
-       (t (jsons-literal token path)))))
-
-  )
-
- (defun string-integer-p (string)
-   (if (string-match "\\`[-+]?[0-9]+\\'" string)
-       t
-     nil))
+       (t (jsons-literal token path))))))
 
 (defun jsons-is-number (str)
-  "Tests to see whether str is a valid JSON number. Doesn't quite work properly,
-   since it accepts strings such as 0s, but since I'm only using it to parse
-   values and not validate them right now I'm using it as is.
-TODO: Fix this function to work properly."
+  "Tests to see whether str is a valid JSON number."
   (progn 
     (match-end 0)
     (save-match-data
-      (if (string-match "\\(-?\\(0\\|\\([1-9][[:digit:]]*\\)\\)\\(\\.[[:digit:]]+\\)?\\([eE][-+]?[[:digit:]]+\\)?\\)" str)
+      (if (string-match "^\\(-?\\(0\\|\\([1-9][[:digit:]]*\\)\\)\\(\\.[[:digit:]]+\\)?\\([eE][-+]?[[:digit:]]+\\)?\\)$" str)
 	  (progn
 	    (match-end 0)
 	    t
@@ -151,9 +146,10 @@ TODO: Fix this function to work properly."
 (defun jsons-parse ()
   "Parses the file given in file, returns a list of nodes representing the file."
   ;;  (setq jsons-tokens (jsons-get-tokens file))
-  (with-current-buffer "aws.json"
+  (with-current-buffer "rfc_object.json"
     (progn
       (setq jsons-curr-token 0)
+      (setq jsons-regions ())
       (let ((token (jsons-consume-token)))
 	(cond
 	 ((string= token "{") (jsons-object ()))
@@ -217,7 +213,7 @@ TODO: Remove extra comma printed after lists of object members, and lists of arr
 	(when (and (> (point) min_token) (< (point) max_token))
 	  (setq node (elt json_region 2))))
       (setq i (+ i 1)))
-    (message (elt node 2))))
+    (message node)))
 
 (jsons-parse)
 (jsons-put-string "Test_buffer" jsons-regions)
