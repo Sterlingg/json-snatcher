@@ -1,15 +1,49 @@
-;; json-snatcher.el
-;; Author: Sterling Graham
-;; Year: 2013
+;;; json-snatcher.el --- Grabs the path to JSON values in a JSON file.
+
+;; Copyright (C) 2013 Sterling Graham <sterlingrgraham@gmail.com>
+
+;; Author: Sterling Graham <sterlingrgraham@gmail.com>
+;; URL: http://github.com/sterlingg/
+;; Version: 1.0
+
+;; This file is not part of GNU Emacs.
+
+;;; Commentary:
+
+;; 
+
+;;; Installation:
 ;;
-;; Wishlist:
-;;          - Faster region lookup. Possibly using an interval tree.
+;; (require 'json-snatcher)
+;; (global-set-key (kbd "C-x n w") 'recursive-widen)
 ;;
 
-(setq jsons-curr-token 0)
-(setq jsons-tokens ())
-(setq jsons-regions ())
-(setq lexical-binding t)
+;;; License:
+
+;; This program is free software; you can redistribute it and/or
+;; modify it under the terms of the GNU General Public License
+;; as published by the Free Software Foundation; either version 3
+;; of the License, or (at your option) any later version.
+;;
+;; This program is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU General Public License for more details.
+;;
+;; You should have received a copy of the GNU General Public License
+;; along with GNU Emacs; see the file COPYING.  If not, write to the
+;; Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
+;; Boston, MA 02110-1301, USA.
+
+;;; Code:
+
+(defvar jsons-curr-token 0 "The current character in the buffer being parsed")
+(defvar jsons-parsed (make-hash-table :test 'equal) "Hashes each open buffer to
+the parse tree for that buffer.")
+(defvar jsons-parsed-regions (make-hash-table :test 'equal) "Hashes each open buffer to the ranges in the buffer for each of the parse trees nodes.")
+(defvar jsons-curr-region () "The node ranges in the current buffer.")
+(setq lexical-binding t) 
+(add-hook 'kill-buffer-hook 'jsons-remove-buffer)
 
 (defun jsons-consume-token ()
   "Returns the next token in the stream."
@@ -21,13 +55,14 @@
 	 ;; the RFC.
 	 (string_regex "\\(\"\\(\\([^\"\\\\\r\s\t\n]\\)*\\([\r\s\t\n]\\)*\\|\\(\\(\\\\\\\\\\)*\\\\\\(\\([^\r\s\t\n]\\|\\(u[0-9A-Fa-f]\\{4\\}\\)\\)\\)\\)\\)+\"\\)")
 	 (num_regex "\\(-?\\(0\\|\\([1-9][[:digit:]]*\\)\\)\\(\\.[[:digit:]]+\\)?\\([eE][-+]?[[:digit:]]+\\)?\\)")
-	 (full_regex (concat "\\(" delim_regex "\\|" string_regex "\\|" num_regex "\\)")))
+	 (literal_regex "\\(true\\|false\\|null\\)")
+	 (full_regex (concat "\\(" delim_regex "\\|" literal_regex "\\|" string_regex "\\|" num_regex "\\)")))
 
     (if (re-search-forward full_regex (point-max) "Not nil")
 	(progn
 	  (setq jsons-curr-token (match-end 0))
 	  (buffer-substring-no-properties (match-beginning 0) (match-end 0)))
-      (message "Reached EOF."))))
+      (message "Reached EOF. Possibly invalid JSON."))))
 
 (defun jsons-array (path)
   "Function called when a [ is encountered. Creates a new json array object that contains the
@@ -52,7 +87,11 @@ array."
 
 (defun jsons-literal (token path)
   "Returns a json-literal given by the current token. A literal is either true|false|null."
- (list "json-literal" token path))
+  (let ((match_start (match-beginning 0))
+	(match_end (match-end 0)))
+    (progn
+      (setq jsons-curr-region (append (list (list match_start match_end path)) jsons-curr-region))
+      (list "json-literal" token path (list match_start match_end)))))
 
 (defun jsons-member (token path)
   "Called when a member in a JSON object needs to be parsed."
@@ -65,18 +104,17 @@ array."
     (if (not (string= (jsons-consume-token) ":"))
 	(error "Encountered token other than : in jsons-member.")
       nil)
-
     (let ((json-val (jsons-value (jsons-consume-token) (cons value path) nil)))
       (setq member (list member (append json-val
 					(list range_start range_end))))
-      (setq jsons-regions (append jsons-regions (list (list range_start range_end json-val))))
+      (setq jsons-curr-region (append (list (list range_start range_end (elt json-val 2))) jsons-curr-region))
     member)))
 
 (defun jsons-number (token path)
   "Returns a json-number given by the current token. A json-number is defined as per the num_regex
 in the jsons-get-tokens function."
   (progn
-    (setq jsons-regions (append jsons-regions (list (list (match-beginning 0) (match-end 0) path))))
+    (setq jsons-curr-region (append (list (list (match-beginning 0) (match-end 0) path)) jsons-curr-region))
     (list "json-number" token path)))
 
 (defun jsons-object (path)
@@ -85,27 +123,21 @@ in the jsons-get-tokens function."
 	(token (jsons-consume-token))
 	(members (make-hash-table :test 'equal))
 	(object (list "json-object" members path)))
-    
     (while (not (string= token "}"))
       (if (not (string= token ","))
 	  (let ((json-mem (jsons-member token path)))
 	    (puthash (elt (elt json-mem 0) 1) (elt json-mem 1) (elt object 1))
-	    (setq token (jsons-consume-token))
-	    )
-	(setq token (jsons-consume-token)))
-      )
+	    (setq token (jsons-consume-token)))
+	(setq token (jsons-consume-token))))
     object))
 
 (defun jsons-string (token path)
   "Returns a json-string given by the current token."
 (let ((match_start (match-beginning 0))
-      (match_end (match-end 0))
-      )
+      (match_end (match-end 0)))
   (progn
-    (setq jsons-regions (append jsons-regions (list (list match_start match_end path))))
-  (list "json-string" token path (list match_start match_end))
-  )
-  ))
+    (setq jsons-curr-region (append (list (list match_start match_end path)) jsons-curr-region))
+  (list "json-string" token path (list match_start match_end)))))
 
 ;;TODO: Refactor the if array-index statement.
 (defun jsons-value (token path array-index)
@@ -119,12 +151,9 @@ it is contained in."
 	 ((string= token "{") (jsons-object (cons array-index path)))
 	 ((string= token "[") (jsons-array (cons array-index path)))
 	 ((string= (substring token 0 1) "\"") (jsons-string token (cons array-index path)))
-	 (t (jsons-literal token (cons array-index path)))
-	 )
-	)
-
+	 (t (jsons-literal token (cons array-index path)))))
     (if (jsons-is-number token)
-	(list "json-value" (jsons-number token path) (list (match-beginning 0) (match-end 0)))
+	(list "json-value" (jsons-number token path) path (list (match-beginning 0) (match-end 0)))
       (cond
        ((string= token "{") (jsons-object path))
        ((string= token "[") (jsons-array path))
@@ -139,28 +168,27 @@ it is contained in."
       (if (string-match "^\\(-?\\(0\\|\\([1-9][[:digit:]]*\\)\\)\\(\\.[[:digit:]]+\\)?\\([eE][-+]?[[:digit:]]+\\)?\\)$" str)
 	  (progn
 	    (match-end 0)
-	    t
-	    )
+	    t)
 	nil))))
 
 (defun jsons-parse ()
   "Parses the file given in file, returns a list of nodes representing the file."
-  ;;  (setq jsons-tokens (jsons-get-tokens file))
-  (with-current-buffer "rfc_object.json"
-    (progn
-      (setq jsons-curr-token 0)
-      (setq jsons-regions ())
-      (let ((token (jsons-consume-token)))
-	(cond
-	 ((string= token "{") (jsons-object ()))
-	 ((string= token "[") (jsons-array ()))
-	 (t nil))))))
-
-(defun jsons-put-string (buffer str)
-  "Append the text of the region to BUFFER."
-    (save-current-buffer
-      (set-buffer (get-buffer-create buffer))
-      (insert (prin1-to-string str t))))
+  (interactive)
+  (save-excursion
+    (setq jsons-curr-token 0)
+    (setq jsons-curr-region ())
+    (if (not (gethash (current-buffer) jsons-parsed))
+	(let* ((token (jsons-consume-token))
+	       (return_val nil))
+	  (cond
+	   ((string= token "{") (setq return_val (jsons-object ())))
+	   ((string= token "[") (setq return_val (jsons-array ())))
+	   (t nil))
+	  (puthash (current-buffer) return_val jsons-parsed)
+	  (puthash (current-buffer) jsons-curr-region jsons-parsed-regions)
+	  return_val)
+      (gethash (current-buffer) jsons-parsed)      
+      )))
 
 (defun jsons-print-to-buffer (buffer node)
   "Prints the given node to the buffer specified in buffer argument.
@@ -203,17 +231,41 @@ TODO: Remove extra comma printed after lists of object members, and lists of arr
 (defun test_regions ()
   "Function I'm using to check whether I can grab the json path from the cursor position in the json file."
   (interactive)
-  (let ((i 0)
-	(node nil))
-    (while (< i (length jsons-regions))
-      (let*	  
-	  ((json_region (elt jsons-regions i))
-	   (min_token (elt json_region 0))
-	   (max_token (elt json_region 1)))
-	(when (and (> (point) min_token) (< (point) max_token))
-	  (setq node (elt json_region 2))))
-      (setq i (+ i 1)))
-    (message node)))
+      (let ((i 0)
+	    (node nil))
+	(setq jsons-curr-region (gethash (current-buffer) jsons-parsed-regions))
+	    (when (not (gethash (current-buffer) jsons-parsed))
+	      (jsons-parse))
+	(while (< i (length jsons-curr-region))
+	  (let*	  
+	      ((json_region (elt jsons-curr-region i))
+	       (min_token (elt json_region 0))
+	       (max_token (elt json_region 1)))
+	    (when (and (> (point) min_token) (< (point) max_token))
+	      (setq node (elt json_region 2))))
+	  (setq i (+ i 1)))
+	node))
 
-(jsons-parse)
-(jsons-put-string "Test_buffer" jsons-regions)
+(defun jsons-print-path ()
+  "Prints the path to the JSON value under point."
+  (interactive)
+  (let ((path (test_regions))
+	(i 0)
+	(python_str ""))
+    (setq path (reverse path))
+    (while (< i (length path))
+      (if (numberp (elt path i))
+	  (progn
+	    (setq python_str (concat python_str "[" (number-to-string (elt path i)) "]"))
+	    (setq i (+ i 1)))
+	(progn
+	  (setq python_str (concat python_str "[" (elt path i) "]"))
+	  (setq i (+ i 1)))))
+    (princ python_str)))
+
+(defun jsons-remove-buffer ()
+  "Used to clean up the token regions, and parse tree used by the parser."
+  (progn
+    (remhash (current-buffer) jsons-parsed)
+    (remhash (current-buffer) jsons-parsed-regions)))
+
