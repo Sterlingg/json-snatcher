@@ -21,5 +21,6 @@ in either js or js2 mode:
    ```
 ## Demo
    Here's an example of the plugin at work.
+
    ![Lights, Camera, Action!](https://github.com/Sterlingg/json-snatcher/raw/master/Demo/demo.gif)
 
