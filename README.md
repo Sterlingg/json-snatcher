@@ -1,4 +1,23 @@
-json-snatcher
-=============
+#json-snatcher.el
 
 Say you're looking through a large JSON file, and see a value that you want to extract programmatically. This Emacs extension will allow you to snatch the path to this value.
+
+## Installation
+
+First include the package:
+	(require 'json-snatcher)
+
+Then add the following lines, which sets a hotkey when editing JSON files
+in either js or js2 mode:
+(defun js-mode-bindings ()
+  "Sets a hotkey for using the json-snatcher plugin"
+  (when (string-match  "\\.json$" (buffer-name))
+      (local-set-key (kbd "C-c C-g") 'jsons-print-path)))
+
+(add-hook 'js-mode-hook 'js-mode-bindings)
+(add-hook 'js2-mode-hook 'js-mode-bindings)
+
+## Demo
+   Here's an example of the plugin at work.
+   ![Lights, Camera, Action!](https://github.com/sterlingg/json-snatcher/Demo/demo.gif)
+
