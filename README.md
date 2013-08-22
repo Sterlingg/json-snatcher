@@ -5,9 +5,9 @@ Say you're looking through a large JSON file, and see a value that you want to e
 ## Installation
 
 First include the package:
-	```lisp
-	(require 'json-snatcher)
-	```
+```lisp
+(require 'json-snatcher)
+```
 
 Then add the following lines, which sets a hotkey when editing JSON files
 in either js or js2 mode:
