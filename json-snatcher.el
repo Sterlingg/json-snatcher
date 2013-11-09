@@ -301,4 +301,4 @@ it in the kill ring."
     (remhash (current-buffer) jsons-parsed)
     (remhash (current-buffer) jsons-parsed-regions)))
 
-
+;;; json-snatcher.el ends here
