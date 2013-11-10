@@ -11,7 +11,7 @@
 
 ;;; Commentary:
 ;;
-;; Well this was my first excursion into ELisp programmming. It didn't go too badly once
+;; Well this was my first excursion into ELisp programmming.  It didn't go too badly once
 ;; I fiddled around with a bunch of the functions.
 ;;
 ;; The process of getting the path to a JSON value at point starts with
@@ -22,12 +22,12 @@
 ;; While parsing, the region occupied by the node is recorded into the
 ;; jsons-parsed-regions hash table as a list.The list contains the location
 ;; of the first character occupied by the node, the location of the last
-;; character occupied, and the path to the node. The parse tree is also stored
+;; character occupied, and the path to the node.  The parse tree is also stored
 ;; in the jsons-parsed list for possible future use.
 ;;
 ;; Once the buffer has been parsed, the node at point is looked up in the
 ;; jsons-curr-region list, which is the list of regions described in the
-;; previous paragraph for the current buffer. If point is not in one of these
+;; previous paragraph for the current buffer.  If point is not in one of these
 ;; interval ranges nil is returned, otherwise the path to the value is returned
 ;; in the form [<key-string>] for objects, and [<loc-int>] for arrays.
 ;; eg: ['value1'][0]['value2'] gets the array at with name value1, then gets the
@@ -101,16 +101,13 @@
       (message "Reached EOF. Possibly invalid JSON."))))
 
 (defun jsons-array (path)
-  "Function called when a [ is encountered. Creates a new json array object that contains the
-identifier \"json-array\", a list of the elements contained in the array, the path to the
-array."
+  "Create a new json array object that contain the identifier \"json-array\".
+a list of the elements contained in the array, and the PATH to the array."
   (let*(
         (token (jsons-consume-token))
         (array "json-array")
         (elements ())
-        (i 0)
-        (range_start jsons-curr-token)
-        (range_end (point-max)))
+        (i 0))
     (while (not (string= token "]"))
       (if (not (string= token ","))
           (let ((json-val (jsons-value token path i)))
@@ -118,12 +115,10 @@ array."
             (push json-val elements)
             (setq token (jsons-consume-token)))
         (setq token (jsons-consume-token))))
-    (setq range_end (match-end 0))
     (list array (reverse elements) path)))
 
 (defun jsons-literal (token path)
-  "Return a json-literal given by the current token.
-A literal is either true|false|null."
+  "Given a TOKEN and PATH, this function return the PATH to the literal."
   (let ((match_start (match-beginning 0))
         (match_end (match-end 0)))
     (progn
@@ -131,7 +126,8 @@ A literal is either true|false|null."
       (list "json-literal" token path (list match_start match_end)))))
 
 (defun jsons-member (token path)
-  "Called when a member in a JSON object needs to be parsed."
+  "This function is called when a member in a JSON object needs to be parsed.
+Given the current TOKEN, and the PATH to this member."
   (let* ((member ())
          (value token)
          (range_start (match-beginning 0))
@@ -139,7 +135,7 @@ A literal is either true|false|null."
          )
     (setq member (list "json-member" token))
     (if (not (string= (jsons-consume-token) ":"))
-        (error "Encountered token other than : in jsons-member.")
+        (error "Encountered token other than : in jsons-member")
       nil)
     (let ((json-val (jsons-value (jsons-consume-token) (cons value path) nil)))
       (setq member (list member (append json-val
@@ -148,15 +144,16 @@ A literal is either true|false|null."
     member)))
 
 (defun jsons-number (token path)
-  "Return a json-number given by the current token.
-A json-number is defined as per the num_regex in the
-`jsons-get-tokens' function."
+  "This function will return a json-number given by the current TOKEN.
+PATH points to the path to this number.  A json-number is defined as per
+the num_regex in the `jsons-get-tokens' function."
   (progn
     (setq jsons-curr-region (append (list (list (match-beginning 0) (match-end 0) path)) jsons-curr-region))
     (list "json-number" token path)))
 
 (defun jsons-object (path)
-  "Function called when a { is encountered."
+  "This function is called when a { is encountered while parsing.
+PATH is the path in the tree to this object."
   (let*(
         (token (jsons-consume-token))
         (members (make-hash-table :test 'equal))
@@ -170,7 +167,9 @@ A json-number is defined as per the num_regex in the
     object))
 
 (defun jsons-string (token path)
-  "Return a json-string given by the current token."
+  "This function is called when a string is encountered while parsing.
+The TOKEN is the current token being examined.
+The PATH is the path to this string."
 (let ((match_start (match-beginning 0))
       (match_end (match-end 0)))
   (progn
@@ -180,7 +179,11 @@ A json-number is defined as per the num_regex in the
 (defun jsons-value (token path array-index)
   "A value, which is either an object, array, string, number, or literal.
 The is-array variable is nil if inside an array, or the index in
-the array that it occupies."
+the array that it occupies.
+TOKEN is the current token being parsed.
+PATH is the path to this value.
+ARRAY-INDEX is non-nil if the value is contained within an array, and
+points to the index of this value in the containing array."
 ;;TODO: Refactor the if array-index statement.
   (if array-index
       (if (jsons-is-number token)
@@ -217,7 +220,7 @@ the array that it occupies."
     node))
 
 (defun jsons-is-number (str)
-  "Tests to see whether str is a valid JSON number."
+  "Test to see whether STR is a valid JSON number."
   (progn
     (match-end 0)
     (save-match-data
@@ -228,7 +231,7 @@ the array that it occupies."
         nil))))
 
 (defun jsons-parse ()
-  "Parses the file given in file, returns a list of nodes representing the file."
+  "Parse the file given in file, return a list of nodes representing the file."
   (save-excursion
     (setq jsons-curr-token 0)
     (setq jsons-curr-region ())
@@ -244,8 +247,8 @@ the array that it occupies."
           return_val)
       (gethash (current-buffer) jsons-parsed))))
 
-(defun jsons-print-to-buffer (buffer node)
-  "Prints the given node to the buffer specified in buffer argument.
+(defun jsons-print-to-buffer (node buffer)
+  "Prints the given NODE to the BUFFER specified in buffer argument.
 TODO: Remove extra comma printed after lists of object members, and lists of array members."
   (let ((id (elt node 0)))
     (cond
@@ -298,6 +301,12 @@ TODO: Remove extra comma printed after lists of object members, and lists of arr
           (setq i (+ i 1)))))
     (progn (kill-new python_str)
            (princ python_str))))
+
+(defun jsons-put-string (str buffer)
+  "Append STR to the BUFFER specified in the argument."
+    (save-current-buffer
+      (set-buffer (get-buffer-create buffer))
+      (insert (prin1-to-string str t))))
 
 (defun jsons-remove-buffer ()
   "Used to clean up the token regions, and parse tree used by the parser."
