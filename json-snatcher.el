@@ -302,7 +302,7 @@ TODO: Remove extra comma printed after lists of object members, and lists of arr
     (progn (kill-new python_str)
            (princ python_str))))
 
-(defun jsons-put-string (str buffer)
+(defun jsons-put-string (buffer str)
   "Append STR to the BUFFER specified in the argument."
     (save-current-buffer
       (set-buffer (get-buffer-create buffer))
