@@ -79,7 +79,10 @@
 (defvar jsons-parsed-regions (make-hash-table :test 'equal)
   "Hashes each open buffer to the ranges in the buffer for each of the parse trees nodes.")
 (defvar jsons-curr-region () "The node ranges in the current buffer.")
-(defvar jsons-path-printer 'jsons-print-path-python "Default jsons path printer")
+(defcustom jsons-path-printer 'jsons-print-path-python "Default jsons path printer"
+  :type '(choice
+	  (const jsons-print-path-python)
+	  (const jsons-print-path-jq)))
 (add-hook 'kill-buffer-hook 'jsons-remove-buffer)
 
 (defun jsons-consume-token ()
