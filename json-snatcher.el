@@ -221,14 +221,15 @@ points to the index of this value in the containing array."
 
 (defun jsons-is-number (str)
   "Test to see whether STR is a valid JSON number."
-  (progn
-    (match-end 0)
-    (save-match-data
-      (if (string-match "^\\(-?\\(0\\|\\([1-9][[:digit:]]*\\)\\)\\(\\.[[:digit:]]+\\)?\\([eE][-+]?[[:digit:]]+\\)?\\)$" str)
-          (progn
-            (match-end 0)
-            t)
-        nil))))
+  (string-match-p
+   (rx bol
+	   (optional ?-)
+	   (or ?0
+		   (seq (any "1-9") (* digit)))
+	   (optional ?. (+ digit))
+	   (optional (any "eE") (optional (any "-+")) (+ digit))
+	   eol)
+   str))
 
 (defun jsons-parse ()
   "Parse the file given in file, return a list of nodes representing the file."
