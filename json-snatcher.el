@@ -77,9 +77,9 @@
 (defvar jsons-parsed (make-hash-table :test 'equal)
   "Hashes each open buffer to the parse tree for that buffer.")
 (defvar jsons-parsed-regions (make-hash-table :test 'equal)
-  "Hashes each open buffer to the ranges in the buffer for each of the parse trees nodes.")
+  "Hashes buffer to parse tree node ranges for parse trees nodes of the buffer.")
 (defvar jsons-curr-region () "The node ranges in the current buffer.")
-(defvar jsons-path-printer 'jsons-print-path-python "Default jsons path printer")
+(defvar jsons-path-printer 'jsons-print-path-python "Default jsons path printer.")
 
 (defun jsons-consume-token ()
   "Return the next token in the stream."
@@ -203,7 +203,7 @@ points to the index of this value in the containing array."
 
 
 (defun jsons-get-path ()
-  "Function to check whether we can grab the json path from the cursor position in the json file."
+  "Check whether we can grab the json path from point in the current buffer."
   (let ((i 0)
         (node nil))
     (setq jsons-curr-region (gethash (current-buffer) jsons-parsed-regions))
@@ -250,7 +250,8 @@ points to the index of this value in the containing array."
 
 (defun jsons-print-to-buffer (node buffer)
   "Prints the given NODE to the BUFFER specified in buffer argument.
-TODO: Remove extra comma printed after lists of object members, and lists of array members."
+TODO: Remove extra comma printed after lists of object members,
+and lists of array members."
   (let ((id (elt node 0)))
     (cond
      ((string= id "json-array")
