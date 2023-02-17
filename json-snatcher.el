@@ -307,21 +307,17 @@ TODO: Remove extra comma printed after lists of object members, and lists of arr
            (princ jq_str))))
 
 (defun jsons-print-path-python ()
-  "Print the python path to the JSON value under point, and save it in the kill ring."
+  "Print the python path of the JSON value at point, and save it in the kill ring."
   (let ((path (jsons-get-path))
-        (i 0)
-        (python_str ""))
-    (setq path (reverse path))
-    (while (< i (length path))
-      (if (numberp (elt path i))
-          (progn
-            (setq python_str (concat python_str "[" (number-to-string (elt path i)) "]"))
-            (setq i (+ i 1)))
-        (progn
-          (setq python_str (concat python_str "[" (elt path i) "]"))
-          (setq i (+ i 1)))))
-    (progn (kill-new python_str)
-           (princ python_str))))
+		(python-str ""))
+	(setq python-str (concat "["
+							 ;; TODO: Is it possible to have numbers here?
+							 (if (numberp (car path))
+								 (string-to-number (pop path))
+							   (pop path))
+							 "]" python-str))
+	(kill-new python-str)
+	(princ python-str)))
 
 ;;;###autoload
 (defun jsons-print-path ()
